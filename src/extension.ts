@@ -88,8 +88,7 @@ async function getRecommendations(prompt: string): Promise<{ text: string }[]> {
 
 // Webview HTML content for ChatGPT
 function getWebviewContent(): string {
-	return `
-    <!DOCTYPE html>
+	return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -102,7 +101,9 @@ function getWebviewContent(): string {
     #input-container { display: flex; padding: 10px; border-top: 1px solid #ddd; }
     #input { flex: 1; padding: 10px; font-size: 16px; }
     #send { padding: 10px 20px; font-size: 16px; }
-    #send:disabled { background-color: #ccc; cursor: not-allowed; }
+    .message { margin-bottom: 10px; }
+    .code-block { background-color: #f4f4f4; padding: 10px; border: 1px solid #ddd; font-family: monospace; white-space: pre-wrap; overflow-x: auto; }
+    .copy-button { margin-left: 10px; padding: 5px 10px; font-size: 14px; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -119,27 +120,27 @@ function getWebviewContent(): string {
     const send = document.getElementById('send');
     const messages = document.getElementById('messages');
 
-    // Enable/disable the Send button based on input
     input.addEventListener('input', () => {
       send.disabled = !input.value.trim();
     });
 
-	// Listen for Enter key
+    function sendMessage() {
+      const text = input.value.trim();
+      if (text) {
+        addMessage('You', text);
+        vscode.postMessage({ command: 'askChatGPT', text });
+        input.value = '';
+        send.disabled = true;
+      }
+    }
+
     input.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') {
         sendMessage();
       }
     });
 
-    send.addEventListener('click', () => {
-      const text = input.value.trim();
-      if (text) {
-        addMessage('You', text);
-        vscode.postMessage({ command: 'askChatGPT', text });
-        input.value = '';
-        send.disabled = true; // Disable button after clearing input
-      }
-    });
+    send.addEventListener('click', sendMessage);
 
     window.addEventListener('message', (event) => {
       const message = event.data;
@@ -150,9 +151,63 @@ function getWebviewContent(): string {
 
     function addMessage(sender, text) {
       const div = document.createElement('div');
-      div.textContent = \`\${sender}: \${text}\`;
+      div.className = 'message';
+
+      if (sender === 'ChatGPT' && text.includes('```')) {
+        const [beforeCode, codeContent, afterCode] = parseCodeSnippet(text);
+
+        // Add regular message text before the code block
+        if (beforeCode) {
+          const regularText = document.createElement('div');
+          regularText.textContent = beforeCode;
+          div.appendChild(regularText);
+        }
+
+        // Add the code block with a copy button
+        const codeBlock = document.createElement('div');
+        codeBlock.className = 'code-block';
+        codeBlock.textContent = codeContent;
+
+        const copyButton = document.createElement('button');
+        copyButton.className = 'copy-button';
+        copyButton.textContent = 'Copy';
+        copyButton.addEventListener('click', () => {
+          navigator.clipboard.writeText(codeContent).then(() => {
+            alert('Code copied to clipboard!');
+          });
+        });
+
+        const codeContainer = document.createElement('div');
+        codeContainer.appendChild(codeBlock);
+        codeContainer.appendChild(copyButton);
+        div.appendChild(codeContainer);
+
+        // Add any regular text after the code block
+        if (afterCode) {
+          const afterText = document.createElement('div');
+          afterText.textContent = afterCode;
+          div.appendChild(afterText);
+        }
+      } else {
+        div.textContent = `${sender}: ${text}`;
+      }
+
       messages.appendChild(div);
       messages.scrollTop = messages.scrollHeight;
+    }
+
+    function parseCodeSnippet(text) {
+      const codeRegex = /```(?:\w*\n)?([\s\S]*?)```/;
+      const match = text.match(codeRegex);
+
+      if (match) {
+        const beforeCode = text.slice(0, match.index).trim();
+        const codeContent = match[1].trim();
+        const afterCode = text.slice(match.index + match[0].length).trim();
+        return [beforeCode, codeContent, afterCode];
+      }
+
+      return [text, null, null];
     }
   </script>
 </body>
