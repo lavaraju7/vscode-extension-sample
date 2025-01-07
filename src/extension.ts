@@ -2,93 +2,93 @@ import * as vscode from "vscode";
 import axios from "axios";
 
 export function activate(context: vscode.ExtensionContext) {
-	// Command to open the ChatGPT Webview
-	const chatCommand = vscode.commands.registerCommand(
-		"chatgpt.openChat",
-		() => {
-			const panel = vscode.window.createWebviewPanel(
-				"chatgpt",
-				"ChatGPT",
-				vscode.ViewColumn.One,
-				{ enableScripts: true }
-			);
+  // Command to open the ChatGPT Webview
+  const chatCommand = vscode.commands.registerCommand(
+    "chatgpt.openChat",
+    () => {
+      const panel = vscode.window.createWebviewPanel(
+        "chatgpt",
+        "ChatGPT",
+        vscode.ViewColumn.One,
+        { enableScripts: true }
+      );
 
-			panel.webview.html = getWebviewContent();
+      panel.webview.html = getWebviewContent();
 
-			panel.webview.onDidReceiveMessage(async (message) => {
-				if (message.command === "askChatGPT") {
-					const response = await askChatGPT(message.text);
-					panel.webview.postMessage({
-						command: "showResponse",
-						text: response,
-					});
-				}
-			});
-		}
-	);
+      panel.webview.onDidReceiveMessage(async (message) => {
+        if (message.command === "askChatGPT") {
+          const response = await askChatGPT(message.text);
+          panel.webview.postMessage({
+            command: "showResponse",
+            text: response,
+          });
+        }
+      });
+    }
+  );
 
-	// Register real-time code recommendation provider
-	const completionProvider = vscode.languages.registerCompletionItemProvider(
-		{ scheme: "file", language: "javascript" },
-		{
-			async provideCompletionItems(document, position) {
-				const lineText = document.lineAt(position).text;
-				const userText = lineText.slice(0, position.character);
+  // Register real-time code recommendation provider
+  const completionProvider = vscode.languages.registerCompletionItemProvider(
+    { scheme: "file", language: "javascript" },
+    {
+      async provideCompletionItems(document, position) {
+        const lineText = document.lineAt(position).text;
+        const userText = lineText.slice(0, position.character);
 
-				// Call ChatGPT for recommendations
-				const suggestions = await getRecommendations(userText);
+        // Call ChatGPT for recommendations
+        const suggestions = await getRecommendations(userText);
 
-				return suggestions.map((suggestion) => {
-					const item = new vscode.CompletionItem(
-						suggestion.text,
-						vscode.CompletionItemKind.Text
-					);
-					item.detail = "AI Recommendation";
-					item.insertText = suggestion.text;
-					return item;
-				});
-			},
-		},
-		'.'
-	);
+        return suggestions.map((suggestion) => {
+          const item = new vscode.CompletionItem(
+            suggestion.text,
+            vscode.CompletionItemKind.Text
+          );
+          item.detail = "AI Recommendation";
+          item.insertText = suggestion.text;
+          return item;
+        });
+      },
+    },
+    '.'
+  );
 
-	context.subscriptions.push(completionProvider);
+  context.subscriptions.push(completionProvider);
 }
 
 export function deactivate() { }
 
 // Function to call ChatGPT for chat responses
 async function askChatGPT(prompt: string): Promise<string> {
-	const apiUrl = "http://localhost:3000/api/superheroes/chatgpt";
+  // const apiUrl = "http://localhost:3000/api/superheroes/chatgpt";
 
-	try {
-		const response = await axios.post(apiUrl, prompt);
+  try {
+    // const response = await axios.post(apiUrl, prompt);
 
-		return response.data.message;
-	} catch (error: any) {
-		return `Error: ${error.message}`;
-	}
+    return "Hii,```Hello``` code ended ```hii```";
+  } catch (error: any) {
+    return `Error: ${error.message}`;
+  }
 }
 
 // Function to call ChatGPT for real-time recommendations
 async function getRecommendations(prompt: string): Promise<{ text: string }[]> {
-	const apiUrl = "http://localhost:3000/api/superheroes/chatgpt";
+  const apiUrl = "http://localhost:3000/api/superheroes/chatgpt";
 
-	try {
-		const response = await axios.post(apiUrl, prompt);
-		return [{ text: response.data.message }];
-		// return response.data.message.map((choice: any) => ({
-		// 	text: choice.text.trim(),
-		// }));
-	} catch (error: any) {
-		console.log(error.message);
-		return [{ text: 'Checking code' }];
-	}
+  try {
+    const response = await axios.post(apiUrl, prompt);
+    return [{ text: response.data.message }];
+    // return response.data.message.map((choice: any) => ({
+    // 	text: choice.text.trim(),
+    // }));
+  } catch (error: any) {
+    console.log(error.message);
+    return [{ text: 'Checking code' }];
+  }
 }
 
 // Webview HTML content for ChatGPT
 function getWebviewContent(): string {
-	return `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -150,65 +150,69 @@ function getWebviewContent(): string {
     });
 
     function addMessage(sender, text) {
-      const div = document.createElement('div');
-      div.className = 'message';
+  const div = document.createElement('div');
+  div.className = 'message';
 
-      if (sender === 'ChatGPT' && text.includes('\`\`\`')) {
-        const [beforeCode, codeContent, afterCode] = parseCodeSnippet(text);
+  if (sender === 'ChatGPT' && text.includes('\`\`\`')) {
+    const [beforeCode, codeSnippets, afterCode] = parseCodeSnippet(text);
 
-        // Add regular message text before the code block
-        if (beforeCode) {
-          const regularText = document.createElement('div');
-          regularText.textContent = beforeCode;
-          div.appendChild(regularText);
-        }
-
-        // Add the code block with a copy button
-        const codeBlock = document.createElement('div');
-        codeBlock.className = 'code-block';
-        codeBlock.textContent = codeContent;
-
-        const copyButton = document.createElement('button');
-        copyButton.className = 'copy-button';
-        copyButton.textContent = 'Copy';
-        copyButton.addEventListener('click', () => {
-          navigator.clipboard.writeText(codeContent).then(() => {
-            alert('Code copied to clipboard!');
-          });
-        });
-
-        const codeContainer = document.createElement('div');
-        codeContainer.appendChild(codeBlock);
-        codeContainer.appendChild(copyButton);
-        div.appendChild(codeContainer);
-
-        // Add any regular text after the code block
-        if (afterCode) {
-          const afterText = document.createElement('div');
-          afterText.textContent = afterCode;
-          div.appendChild(afterText);
-        }
-      } else {
-        div.textContent = \`\${sender}: \${text}\`;
-      }
-
-      messages.appendChild(div);
-      messages.scrollTop = messages.scrollHeight;
+    // Add regular message text before the code blocks
+    if (beforeCode) {
+      const regularText = document.createElement('div');
+      regularText.textContent = beforeCode;
+      div.appendChild(regularText);
     }
+
+    // Add code blocks with copy buttons
+    codeSnippets.forEach(codeContent => {
+      const codeBlock = document.createElement('div');
+      codeBlock.className = 'code-block';
+      codeBlock.textContent = codeContent;
+
+      const copyButton = document.createElement('button');
+      copyButton.className = 'copy-button';
+      copyButton.textContent = 'Copy';
+      copyButton.addEventListener('click', () => {
+        navigator.clipboard.writeText(codeContent).then(() => {
+          alert('Code copied to clipboard!');
+        });
+      });
+
+      const codeContainer = document.createElement('div');
+      codeContainer.appendChild(codeBlock);
+      codeContainer.appendChild(copyButton);
+      div.appendChild(codeContainer);
+    });
+
+    // Add any regular text after the code blocks
+    if (afterCode) {
+      const afterText = document.createElement('div');
+      afterText.textContent = afterCode;
+      div.appendChild(afterText);
+    }
+  } else {
+    div.textContent = \`\${sender}: \${text}\`;
+  }
+
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
 
     function parseCodeSnippet(text) {
-      const codeRegex = /\`\`\`(?:\w*\n)?([\s\S]*?)\`\`\`/;
-      const match = text.match(codeRegex);
+  const codeRegex = new RegExp("\\x60\\x60\\x60(?:\\w*\\n)?([\\s\\S]+?)\\x60\\x60\\x60", "g");
+  let match;
+  const codeSnippets = [];
 
-      if (match) {
-        const beforeCode = text.slice(0, match.index).trim();
-        const codeContent = match[1].trim();
-        const afterCode = text.slice(match.index + match[0].length).trim();
-        return [beforeCode, codeContent, afterCode];
-      }
+  while ((match = codeRegex.exec(text)) !== null) {
+    codeSnippets.push(match[1].trim());
+  }
 
-      return [text, null, null];
-    }
+  const beforeCode = text.slice(0, text.indexOf('\`\`\`')).trim();
+  const afterCode = text.slice(text.lastIndexOf('\`\`\`') + 3).trim();
+
+  return [beforeCode, codeSnippets, afterCode];
+}
   </script>
 </body>
 </html>
