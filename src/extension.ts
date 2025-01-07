@@ -153,7 +153,7 @@ function getWebviewContent(): string {
       const div = document.createElement('div');
       div.className = 'message';
 
-      if (sender === 'ChatGPT' && text.includes('```')) {
+      if (sender === 'ChatGPT' && text.includes('\`\`\`')) {
         const [beforeCode, codeContent, afterCode] = parseCodeSnippet(text);
 
         // Add regular message text before the code block
@@ -189,7 +189,7 @@ function getWebviewContent(): string {
           div.appendChild(afterText);
         }
       } else {
-        div.textContent = `${sender}: ${text}`;
+        div.textContent = \`\${sender}: \${text}\`;
       }
 
       messages.appendChild(div);
@@ -197,7 +197,7 @@ function getWebviewContent(): string {
     }
 
     function parseCodeSnippet(text) {
-      const codeRegex = /```(?:\w*\n)?([\s\S]*?)```/;
+      const codeRegex = /\`\`\`(?:\w*\n)?([\s\S]*?)\`\`\`/;
       const match = text.match(codeRegex);
 
       if (match) {
