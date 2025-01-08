@@ -150,69 +150,69 @@ function getWebviewContent(): string {
     });
 
     function addMessage(sender, text) {
-  const div = document.createElement('div');
-  div.className = 'message';
+      const div = document.createElement('div');
+      div.className = 'message';
 
-  if (sender === 'ChatGPT' && text.includes('\`\`\`')) {
-    const [beforeCode, codeSnippets, afterCode] = parseCodeSnippet(text);
+      if (sender === 'ChatGPT' && text.includes('\`\`\`')) {
+        const snippets = parseCodeSnippet(text);
+        snippets.forEach((snippet) => {
+          if (snippet.type === 'text') {
+            const textNode = document.createElement('div');
+            textNode.textContent = snippet.content;
+            div.appendChild(textNode);
+          } else if (snippet.type === 'code') {
+            const codeBlock = document.createElement('div');
+            codeBlock.className = 'code-block';
+            codeBlock.textContent = snippet.content;
 
-    // Add regular message text before the code blocks
-    if (beforeCode) {
-      const regularText = document.createElement('div');
-      regularText.textContent = beforeCode;
-      div.appendChild(regularText);
-    }
+            const copyButton = document.createElement('button');
+            copyButton.className = 'copy-button';
+            copyButton.textContent = 'Copy';
+            copyButton.addEventListener('click', () => {
+              navigator.clipboard.writeText(snippet.content).then(() => {
+                alert('Code copied to clipboard!');
+              });
+            });
 
-    // Add code blocks with copy buttons
-    codeSnippets.forEach(codeContent => {
-      const codeBlock = document.createElement('div');
-      codeBlock.className = 'code-block';
-      codeBlock.textContent = codeContent;
-
-      const copyButton = document.createElement('button');
-      copyButton.className = 'copy-button';
-      copyButton.textContent = 'Copy';
-      copyButton.addEventListener('click', () => {
-        navigator.clipboard.writeText(codeContent).then(() => {
-          alert('Code copied to clipboard!');
+            const codeContainer = document.createElement('div');
+            codeContainer.appendChild(codeBlock);
+            codeContainer.appendChild(copyButton);
+            div.appendChild(codeContainer);
+          }
         });
-      });
+      } else {
+        div.textContent = \`\${sender}: \${text}\`;
+      }
 
-      const codeContainer = document.createElement('div');
-      codeContainer.appendChild(codeBlock);
-      codeContainer.appendChild(copyButton);
-      div.appendChild(codeContainer);
-    });
-
-    // Add any regular text after the code blocks
-    if (afterCode) {
-      const afterText = document.createElement('div');
-      afterText.textContent = afterCode;
-      div.appendChild(afterText);
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
     }
-  } else {
-    div.textContent = \`\${sender}: \${text}\`;
-  }
-
-  messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
-}
 
 
-    function parseCodeSnippet(text) {
-  const codeRegex = new RegExp("\\x60\\x60\\x60(?:\\w*\\n)?([\\s\\S]+?)\\x60\\x60\\x60", "g");
-  let match;
-  const codeSnippets = [];
+ function parseCodeSnippet(text) {
+      const codeRegex = /\\\`\\\`\\\`(?:\\w*\\n)?([\\s\\S]+?)\\\`\\\`\\\`/g
+      let match;
+      const codeSnippets = [];
+      let lastIndex = 0;
 
-  while ((match = codeRegex.exec(text)) !== null) {
-    codeSnippets.push(match[1].trim());
-  }
+      while ((match = codeRegex.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+          const beforeCode = text.slice(lastIndex, match.index).trim();
+          if (beforeCode) codeSnippets.push({ type: 'text', content: beforeCode });
+        }
+        const codeContent = match[1].trim();
+        codeSnippets.push({ type: 'code', content: codeContent });
+        lastIndex = match.index + match[0].length;
+      }
 
-  const beforeCode = text.slice(0, text.indexOf('\`\`\`')).trim();
-  const afterCode = text.slice(text.lastIndexOf('\`\`\`') + 3).trim();
+      if (lastIndex < text.length) {
+        const afterCode = text.slice(lastIndex).trim();
+        if (afterCode) codeSnippets.push({ type: 'text', content: afterCode });
+      }
+        console.log(codeSnippets)
 
-  return [beforeCode, codeSnippets, afterCode];
-}
+      return codeSnippets;
+    }
   </script>
 </body>
 </html>
